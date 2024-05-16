@@ -133,9 +133,6 @@ def group_chat(chat_handler: GroupMessageHandler) -> None:
         _description_ : A messages handler object to register messages in group chat.
     """
 
-    # /tips command in 'Group chat'.
-    chat_handler.message_handler(func=group_cmd.tips, commands=["tips"])
-
     # /help command in 'Group chat'.
     chat_handler.message_handler(func=group_cmd.help, commands=["help"])
 

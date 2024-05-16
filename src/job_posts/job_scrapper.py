@@ -15,13 +15,29 @@ from bs4 import BeautifulSoup
 # Importing decouple to get the search keyword from the .env file.
 from decouple import config
 
-# Importing webdriver from selenium to scrape the job description.
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.common.by import By
-
 # Importing BeautifulSoup to parse the job description.
 from bs4 import BeautifulSoup
+
+# Importing markdownify to convert HTML to Markdown.
+from markdownify import MarkdownConverter
+
+
+# Creating a custom MarkdownConverter that uses one asterisk for strong/bold text.
+class SingleAsteriskBoldConverter(MarkdownConverter):
+    """
+    Create a custom MarkdownConverter that uses one asterisk for strong/bold text.
+    """
+    
+    def convert_strong(self, el, text, convert_as_inline):
+        return '*' + text + '*' if text else ''
+    
+    def convert_b(self, el, text, convert_as_inline):
+        return self.convert_strong(el, text, convert_as_inline)
+
+# Convert HTML to Markdown using the custom converter
+def md(html, **options):
+    return SingleAsteriskBoldConverter(**options).convert(html)
+
 
 # Creating an abstract class for Scrappers.
 class Scrapper(ABC):
@@ -129,36 +145,26 @@ class LinkedinScrapper(Scrapper):
             # Getting the job link.
             apply_link = job.find("a", class_="base-card__full-link")["href"]
 
-            # Set up the Chrome WebDriver options
-            options = webdriver.ChromeOptions()
-            options.add_argument('--headless')  # Run headlessly
-            options.add_argument('--no-sandbox')
-            options.add_argument('--disable-dev-shm-usage')
-
-            # Initialize the WebDriver
-            driver = webdriver.Chrome(options=options)
-
-            # Open the URL
-            driver.get(apply_link)
-
             # Get the page source
-            page_source = driver.page_source
+            page_source = requests.get(apply_link).content
 
             # Parse the page source with BeautifulSoup
             soup = BeautifulSoup(page_source, 'html.parser')
 
-            # Extract job description
+            # Find and remove 'Show more' and 'Show less' buttons
+            for button in soup.find_all('button'):
+                if button.text.strip() in ['Show more', 'Show less']:
+                    button.decompose()
+
+            # Extract job description in Markdown format
             description_div = soup.find('div', {'class': 'description__text description__text--rich'})
-            job_description = ''
+            job_description_md = ''
             if description_div:
-                section = description_div.find('section', {'class': 'show-more-less-html'})
-                if section:
-                    # Get all text nodes within the section, excluding "Show more" and "Show less"
-                    text_nodes = [node.get_text(strip=True) for node in section.find_all(text=True) if node.parent.name != 'button']
-                    job_description = '\n'.join(text_nodes).rstrip()
+                # Convert the inner HTML of description_div to Markdown
+                job_description_md = md(str(description_div), bullets=['•'])
 
             # Appending the job details to class variable list as a tuple.
-            self.parsed_data.append((job_title, job_company, job_location, job_description, apply_link))
+            self.parsed_data.append((job_title, job_company, job_location, job_description_md, apply_link))
 
     def format_data(self):
         """This Method formats data after being parsed into a desired format"""

@@ -57,28 +57,41 @@ def param_validator(parameter: str) -> bool:
 def ljobs(msg: Message, bot: TeleBot) -> None:
     """This function handles the '/ljobs' command."""
 
-    # If search were provided:
-    # 1- Strip space for string if any.
-    # 2- check if the parameters were passed in valid format.
-    # 3- If parameters are valid pass them to the scrapper, if not send a message to user.
-    if search_params := util.extract_arguments(msg.text).strip():
-        # If the parameters are not in valid format send message to user and exit function.
-        if not param_validator(search_params):
-            bot.reply_to(
-                message=msg,
-                text=f"*{msg.text}* is not a valid search pattern.\nplease follow this pattern * /ljob job title, location *",
-                parse_mode="markdown",
-            )
-            # Exit function.
-            return
-        # Splitting the parameters with the ',' and converting them into a tuple.
-        search_params = tuple(search_params.split(","))
+    # Send a waiting message to the user.
+    wait_message = bot.reply_to(msg, "Please wait while we gather the latest vacancies for you⏳...")
 
-        # Passing the new search params to create the jobs using the jobs factory function.
-        jobs = jobs_factory(search_params)
-    else:
-        # Creating the jobs using the jobs factory functions.
-        jobs = jobs_factory()
+    try:
+        # If search parameters were provided:
+        if search_params := util.extract_arguments(msg.text).strip():
+            # Strip space for the string if any and check parameters format.
+            if not param_validator(search_params):
+                bot.edit_message_text(
+                    chat_id=msg.chat.id,
+                    message_id=wait_message.message_id,
+                    text=f"*{msg.text}* is not a valid search pattern. Please follow this pattern: /ljobs Job Title, Location",
+                    parse_mode="markdown"
+                )
+                return
+            # Convert search parameters into a tuple.
+            search_params = tuple(search_params.split(","))
 
-    # Looping over the list of created posts and sending each one in a message in chat with 2 inline kb.
-    send_job_posts(posts=jobs, bot=bot, msg=msg)
+            # Pass the new search params to create jobs using the jobs factory function.
+            jobs = jobs_factory(search_params)
+        else:
+            # Create jobs using the jobs factory function without parameters.
+            jobs = jobs_factory()
+
+        # Delete the waiting message.
+        bot.delete_message(chat_id=msg.chat.id, message_id=wait_message.message_id)
+
+        # Loop over the list of created posts and send each one.
+        send_job_posts(posts=jobs, bot=bot, msg=msg)
+
+    except Exception as e:
+        # In case scrapping fails or an error occurs, update the waiting message to show an error.
+        error_message = f"Something went wrong while fetching the vacancies🙊: {e}"
+        bot.edit_message_text(
+            chat_id=msg.chat.id,
+            message_id=wait_message.message_id,
+            text=error_message
+        )
