@@ -1,0 +1,22 @@
+name: ci 
+on:
+  push:
+    branches:
+      - master 
+      - main
+      - gh-pages
+permissions:
+  contents: write
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
+      - run: pip install mkdocs-material 
+      - run: pip install mkdocs-autolinks-plugin 
+      - run: pip install mkdocstrings
+      - run: pip install mkdocstrings[crystal,python]
+      - run: mkdocs gh-deploy --force
