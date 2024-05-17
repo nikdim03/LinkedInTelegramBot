@@ -11,7 +11,7 @@ msgs = {
     "help_admins": (
         "*You are an Admin or Owner. Here are your control commands.*\n\n"
         "• /check - _Verify bot activity_.\n"
-        "• /ljobs - _Default job search: Android in the USA_.\n"
+        "• /ljobs - _Default job search_.\n"
         "• /ljobs \[Job Title, Location] - _Search LinkedIn for a job title in specified location_.\n"
         "• /echo \[Message] - _Bot repeats your message._\n"
         "• /addgroup \[Group Id] - _Adds group to allow list_.\n"

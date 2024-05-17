@@ -21,6 +21,12 @@ from bs4 import BeautifulSoup
 # Importing markdownify to convert HTML to Markdown.
 from markdownify import MarkdownConverter
 
+# Getting default job title.
+DEFAULT_JOB_TITLE = config("DEFAULT_JOB_TITLE")
+
+# Getting default location.
+DEFAULT_LOCATION = config("DEFAULT_LOCATION")
+
 
 # Creating a custom MarkdownConverter that uses one asterisk for strong/bold text.
 class SingleAsteriskBoldConverter(MarkdownConverter):
@@ -60,9 +66,9 @@ class Scrapper(ABC):
 class LinkedinScrapper(Scrapper):
     """_summary_ : This data class scraps linkedin for the specified search key word and location in the .ev file."""
 
-    _job_tile: str = "Android"
+    _job_tile: str = DEFAULT_JOB_TITLE
 
-    _location: str = "USA"
+    _location: str = DEFAULT_LOCATION
 
     # The url to send request to and get data back.
     url: str = "https://www.linkedin.com/jobs/search?keywords={JOB_TITLE}&location={LOCATION}&f_TPR=r90000"

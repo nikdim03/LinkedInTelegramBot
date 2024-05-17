@@ -161,8 +161,8 @@ def my_chat_member(chat_handler: MyChatMember) -> None:
 def schedule() -> None:
     """This function collects the created schedules."""
     # Setting the channel_updater scheduler
-    ## Every day at 12:00 PM.
-    channel_schedule = Scheduler(hour="12:00")
+    ## Every 23 hours and 55 minutes
+    channel_schedule = Scheduler(days_skipped=1, hour="12:00", minutes=1435)
     ## Using 'partial' to pass the function with arguments without calling it.
     channel_schedule.set_schedule(partial(channel_jobs_updater, bot))
 
