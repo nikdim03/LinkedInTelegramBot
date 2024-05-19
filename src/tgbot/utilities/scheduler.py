@@ -14,6 +14,8 @@ import schedule
 class Scheduler:
     """This class creates schedules for updating channel content and cleaning the spammers list."""
 
+    _runner_started = False
+
     def __init__(
         self, hour: str = None, days_skipped: int = None, minutes: int = None
     ) -> None:
@@ -66,7 +68,11 @@ class Scheduler:
 
     def run(self) -> None:
         """This Method runs the scheduler on a new thread."""
-        # Running the schedule runner on a separate thread
-        t1 = threading.Thread(target=self.runner)
-        # Starting th thread
-        t1.start()
+        if not Scheduler._runner_started:
+            # Running the schedule runner on a separate thread
+            t1 = threading.Thread(target=Scheduler.runner)
+            # Starting the thread
+            t1.start()
+            Scheduler._runner_started = True
+        else:
+            print("Runner is already running.")

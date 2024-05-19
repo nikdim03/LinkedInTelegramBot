@@ -9,7 +9,7 @@ msgs = {
         "Get the freshest LinkedIn Jobs 💼 updates from the last 24 hours straight to your inbox.",
     ],
     "help_admins": (
-        "*You are an Admin or Owner. Here are your control commands.*\n\n"
+        "*You are an Admin or an Owner. Here are your control commands.*\n\n"
         "• /check - _Verify bot activity_.\n"
         "• /ljobs - _Default job search_.\n"
         "• /ljobs \[Job Title, Location] - _Search LinkedIn for a job title in specified location_.\n"

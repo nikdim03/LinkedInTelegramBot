@@ -58,7 +58,7 @@ def jobs_post_inline_kb(job_link: str) -> InlineKeyboardMarkup:
     inline_kb.row_width = 1
 
     inline_kb.add(
-        InlineKeyboardButton("👆 Click Here To Apply 👆", url=job_link),
+        InlineKeyboardButton("👉 Click Here To Apply 👈", url=job_link),
     )
 
     # Returning the inline keyboard markup.

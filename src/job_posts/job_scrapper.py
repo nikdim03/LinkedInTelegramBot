@@ -21,6 +21,12 @@ from bs4 import BeautifulSoup
 # Importing markdownify to convert HTML to Markdown.
 from markdownify import MarkdownConverter
 
+# Importing datetime to parse timestamp
+from datetime import datetime, timedelta
+
+# Importing re to parse timestamp
+import re
+
 # Getting default job title.
 DEFAULT_JOB_TITLE = config("DEFAULT_JOB_TITLE")
 
@@ -71,7 +77,7 @@ class LinkedinScrapper(Scrapper):
     _location: str = DEFAULT_LOCATION
 
     # The url to send request to and get data back.
-    url: str = "https://www.linkedin.com/jobs/search?keywords={JOB_TITLE}&location={LOCATION}&f_TPR=r90000"
+    url: str = "https://www.linkedin.com/jobs/search?keywords={JOB_TITLE}&location={LOCATION}&f_TPR=r86580"
 
     # Default list to hold raw html data.
     raw_data: list[dict] = field(default_factory=list)
@@ -157,6 +163,33 @@ class LinkedinScrapper(Scrapper):
             # Parse the page source with BeautifulSoup
             soup = BeautifulSoup(page_source, 'html.parser')
 
+            # Extract ago text
+            ago_text_element = soup.find('span', class_='posted-time-ago__text')
+            # Check if the element was found before accessing .text
+            if ago_text_element:
+                ago_text = ago_text_element.text.strip()
+            else:
+                ago_text = "Unknown"
+
+            # Ectract the number from ago text
+            num = 0
+            match = re.search(r'\d+', ago_text)
+            if match:
+                num = int(match.group())
+
+            # Calculate post time
+            timestamp = datetime.now()
+            if 'minute' in ago_text:
+                timestamp = datetime.now() - timedelta(minutes=num)
+            elif 'hour' in ago_text:
+                timestamp = datetime.now() - timedelta(hours=num)
+            elif 'day' in ago_text:
+                timestamp = datetime.now() - timedelta(days=num)
+
+            # Rename ago text for better understanding
+            if ago_text.lower() == '1 day ago':
+                ago_text = '24 hours ago'
+
             # Find and remove 'Show more' and 'Show less' buttons
             for button in soup.find_all('button'):
                 if button.text.strip() in ['Show more', 'Show less']:
@@ -169,29 +202,54 @@ class LinkedinScrapper(Scrapper):
                 # Convert the inner HTML of description_div to Markdown
                 job_description_md = md(str(description_div), bullets=['•'])
 
-            # Appending the job details to class variable list as a tuple.
-            self.parsed_data.append((job_title, job_company, job_location, job_description_md, apply_link))
+            # Check if specified job title is found in either the job title or job description
+            if self._job_tile.lower() in job_title.lower() or self._job_tile in job_description_md.lower():
+                # Appending the job details to class variable list as a tuple
+                self.parsed_data.append((job_title, job_company, job_location, self.replace_md_spaces(job_description_md), apply_link, timestamp.astimezone(), ago_text))
 
     def format_data(self):
         """This Method formats data after being parsed into a desired format"""
-
         # Getting the data out of the instance variable for clarity.
         data = self.parsed_data
+
+        # Sorting the data based on the timestamp (earliest to latest)
+        data.sort(key=lambda job: job[5])
 
         # Looping over the parsed data and formatting it, to be used by the TgJobPost class to create jobs posting posts for telegram.
         for job in data:
             # For each job in the data create a dict object that holds each job detail in a separate key.
             job_details = {
-                # Getting the job title from the first item in the tuple.
                 "job_title": job[0],
-                # Getting the job company from the second item in the tuple
                 "job_company": job[1],
-                # Getting the job location from the third item in the tuple
                 "job_location": job[2],
-                # Getting the "about job" from the fourth item in the tuple
-                "about_job": job[3],
-                # Getting the job link from the fifth item in the tuple
+                "about_job": self.limit_newlines(job[3]).strip(),
                 "apply_link": job[4],
+                "timestamp": job[6]
             }
             # Adding this dict to the formatted_data instance variable.
             self.formatted_data.append(job_details)
+
+
+    def replace_md_spaces(self, text):
+        # Replace lines that consist solely of attributed spaces, with the ones consisting of plain spaces
+        text = re.sub(r'^(?:\s*\*\s*\*\s*)+$', ' ', text, flags=re.MULTILINE)
+        text = re.sub(r'^(?:\s*_\s*_\s*)+$', ' ', text, flags=re.MULTILINE)
+        return text
+
+    def limit_newlines(self, text, max_newlines=4):
+        """
+        Replace sequences of more than max_newlines newline or whitespace-only lines with exactly max_newlines newlines.
+
+        Args:
+            text (str): The input text.
+            max_newlines (int): The maximum number of consecutive newlines allowed.
+
+        Returns:
+            str: The modified text.
+        """
+        # Create a regex pattern to match sequences of more than max_newlines newlines or whitespace-only lines
+        pattern = re.compile(r'(\s*\n\s*){' + str(max_newlines + 1) + r',}')
+        
+        # Replace these sequences with exactly max_newlines newlines
+        replacement = '\n' * max_newlines
+        return pattern.sub(replacement, text)

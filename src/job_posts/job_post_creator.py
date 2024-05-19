@@ -25,10 +25,11 @@ class TgJobPost(TgPost):
 
     # This is the template that will be used to create the post.
     post_template: str = (
-        "• *Job Title* : {} \n"
-        "• *Company* : {} \n"
-        "• *Location* : {} \n"
-        "• *About Job* : {} \n"
+        "• *Job Title:* {}\n"
+        "• *Company:* {}\n"
+        "• *Location:* {}\n"
+        "• *Posted:* {}\n"
+        "• *About the job:*\n{}"
     )
 
     # This is a list that will hold the final posts.
@@ -58,6 +59,7 @@ class TgJobPost(TgPost):
                     job["job_title"],
                     job["job_company"],
                     job["job_location"],
+                    job["timestamp"],
                     job["about_job"],
                     # Grab the first apply link for and embed it inside 'APPLY HERE'
                     ## Using Markdown syntax => [Text](Link to embed).
