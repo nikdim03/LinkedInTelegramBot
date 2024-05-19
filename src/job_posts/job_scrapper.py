@@ -33,6 +33,11 @@ DEFAULT_JOB_TITLE = config("DEFAULT_JOB_TITLE")
 # Getting default location.
 DEFAULT_LOCATION = config("DEFAULT_LOCATION")
 
+# Getting fetch interval (default = 24 hours & 3 minutes)
+if config("FETCH_JOBS_INTERVAL") != '':
+    FETCH_JOBS_INTERVAL = config("FETCH_JOBS_INTERVAL")
+else:
+    FETCH_JOBS_INTERVAL = '86580'
 
 # Creating a custom MarkdownConverter that uses one asterisk for strong/bold text.
 class SingleAsteriskBoldConverter(MarkdownConverter):
@@ -76,8 +81,10 @@ class LinkedinScrapper(Scrapper):
 
     _location: str = DEFAULT_LOCATION
 
+    _fetch_jobs_interval: str = FETCH_JOBS_INTERVAL
+
     # The url to send request to and get data back.
-    url: str = "https://www.linkedin.com/jobs/search?keywords={JOB_TITLE}&location={LOCATION}&f_TPR=r86580"
+    url: str = "https://www.linkedin.com/jobs/search?keywords={JOB_TITLE}&location={LOCATION}&f_TPR=r{FETCH_JOBS_INTERVAL}"
 
     # Default list to hold raw html data.
     raw_data: list[dict] = field(default_factory=list)
@@ -107,7 +114,7 @@ class LinkedinScrapper(Scrapper):
         """This method start the scrapping process."""
 
         # Formatting the url with the job title and location.
-        self.url = self.url.format(JOB_TITLE=self._job_tile, LOCATION=self._location)
+        self.url = self.url.format(JOB_TITLE=self._job_tile, LOCATION=self._location, FETCH_JOBS_INTERVAL = self._fetch_jobs_interval)
 
         # Collecting the data.
         self.collect_data()

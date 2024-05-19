@@ -40,6 +40,23 @@ BOT_TOKEN = config("BOT_TOKEN")
 # Getting channel name.
 CHANNEL_ID = config("CHANNEL_ID")
 
+# Getting post time hour.
+if config("POST_TIME_HOUR") != '':
+    POST_TIME_HOUR = config("POST_TIME_HOUR")
+else:
+    POST_TIME_HOUR = '18:00'
+
+# Getting post time minutes.
+if config("POST_TIME_MINUTES") != '':
+    POST_TIME_MINUTES: int = config("POST_TIME_MINUTES")
+else:
+    POST_TIME_MINUTES: int = None
+
+# Getting days skipped.
+if config("DAYS_SKIPPED") != '':
+    DAYS_SKIPPED: int = config("DAYS_SKIPPED")
+else:
+    DAYS_SKIPPED = 1
 
 # ----- INITIATING OBJECTS ----- #
 
@@ -162,7 +179,7 @@ def schedule() -> None:
     """This function collects the created schedules."""
     # Setting the channel_updater scheduler
     ## Every 24 hours
-    channel_schedule = Scheduler(days_skipped=1, hour="06:32")
+    channel_schedule = Scheduler(days_skipped=DAYS_SKIPPED, hour=POST_TIME_HOUR, minutes=POST_TIME_MINUTES)
     ## Using 'partial' to pass the function with arguments without calling it.
     channel_schedule.set_schedule(partial(channel_jobs_updater, bot))
 
