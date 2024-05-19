@@ -15,6 +15,10 @@ from functools import partial
 # Importing the database cleaning function.
 from database import database_cleaner
 
+# Importing datetime & time for bot polling.
+from datetime import datetime
+import time
+
 # Importing chat handlers, filters and Scheduler.
 from tgbot import (
     GroupMessageHandler,
@@ -250,7 +254,13 @@ def main() -> None:
     # Setting up middlewares.
     middlewares()
     # Running the bot.
-    bot.infinity_polling(allowed_updates=util.update_types)
+    while True:
+        try:
+            bot.polling(none_stop=True, timeout=90, allowed_updates=util.update_types)
+        except Exception as e:
+            print(datetime.now(), e)
+            time.sleep(5)
+            continue
 
 
 # Running main.
