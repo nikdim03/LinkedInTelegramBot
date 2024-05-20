@@ -162,7 +162,7 @@ class LinkedinScrapper(Scrapper):
             ).text.strip()
 
             # Getting the job link.
-            apply_link = job.find("a", class_="base-card__full-link")["href"]
+            apply_link = self.remove_country_code_from_url(job.find("a", class_="base-card__full-link")["href"])
 
             # Get the page source
             page_source = requests.get(apply_link).content
@@ -236,6 +236,12 @@ class LinkedinScrapper(Scrapper):
             # Adding this dict to the formatted_data instance variable.
             self.formatted_data.append(job_details)
 
+    def remove_country_code_from_url(self, url):
+        # Regex pattern to match URLs with country code before linkedin.com
+        pattern = r'https://[a-z]{2}\.linkedin\.com'
+        # Replace the matched pattern with "https://linkedin.com"
+        new_url = re.sub(pattern, 'https://linkedin.com', url)
+        return new_url
 
     def replace_md_spaces(self, text):
         # Replace lines that consist solely of attributed spaces, with the ones consisting of plain spaces
