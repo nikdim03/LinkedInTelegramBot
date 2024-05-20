@@ -240,7 +240,7 @@ class LinkedinScrapper(Scrapper):
         # Regex pattern to match URLs with country code before linkedin.com
         pattern = r'https://[a-z]{2}\.linkedin\.com'
         # Replace the matched pattern with "https://linkedin.com"
-        new_url = re.sub(pattern, 'https://linkedin.com', url)
+        new_url = re.sub(pattern, 'https://www.linkedin.com', url)
         return new_url
 
     def replace_md_spaces(self, text):
