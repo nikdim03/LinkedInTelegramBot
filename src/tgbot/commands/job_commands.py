@@ -90,8 +90,15 @@ def ljobs(msg: Message, bot: TeleBot) -> None:
     except Exception as e:
         # In case scrapping fails or an error occurs, update the waiting message to show an error.
         error_message = f"Something went wrong while fetching the vacancies🙊: {e}"
-        bot.edit_message_text(
-            chat_id=msg.chat.id,
-            message_id=wait_message.message_id,
-            text=error_message
-        )
+        try:
+            error_message = f"Something went wrong while fetching the vacancies🙊: {e}"
+            bot.edit_message_text(
+                chat_id=msg.chat.id,
+                message_id=wait_message.message_id,
+                text=error_message
+            )
+        except Exception:
+            bot.send_message(
+                chat_id=msg.chat.id,
+                text=error_message,
+            )
