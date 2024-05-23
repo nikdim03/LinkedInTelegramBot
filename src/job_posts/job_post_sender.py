@@ -12,6 +12,75 @@ from tgbot import jobs_post_inline_kb
 # Initialize a lock for synchronization
 message_lock = Lock()
 
+def get_unclosed_tag(text: str) -> list:
+    tags = ["```", "`", "*", "_"]
+    stack = []
+    i = 0
+    while i < len(text):
+        if text[i] == '\\' and not stack:
+            i += 2
+            continue
+        
+        if stack:
+            is_i_inceremented = False
+            current_tag = stack[-1]
+            if text.startswith(current_tag, i):
+                is_i_inceremented = True
+                i += len(current_tag)
+                stack.pop()
+                continue
+        else:
+            is_i_inceremented = False
+            for tag in tags:
+                if text.startswith(tag, i):
+                    stack.append(tag)
+                    is_i_inceremented = True
+                    i += len(tag)
+                    break
+        if not is_i_inceremented:
+            i += 1
+    return stack
+
+def is_valid(text: str) -> bool:
+    return get_unclosed_tag(text) == []
+
+def fix_markdown(text: str) -> str:
+    tags = get_unclosed_tag(text)
+    for tag in reversed(tags):
+        text += tag
+    return (text, tags)
+
+def split_markdown(markdown: str, max_length: int = 4096) -> list:
+    chunks = []
+    tags = []
+    start = 0
+    while start < len(markdown):
+        end = start + max_length
+        if end >= len(markdown):
+            chunk = markdown[start:]
+            for tag in reversed(tags):
+                chunk = tag + chunk
+            if not is_valid(chunk):
+                (chunk, tags) = fix_markdown(chunk)
+            chunks.append(chunk)
+            break
+
+        split_pos = markdown.rfind("\n", start, end)
+        if split_pos == -1 or split_pos == start:
+            split_pos = end
+
+        chunk = markdown[start:split_pos]
+        for tag in reversed(tags):
+            chunk = tag + chunk
+
+        if not is_valid(chunk):
+            (chunk, tags) = fix_markdown(chunk)
+        
+        chunks.append(chunk)
+        start = split_pos
+
+    return chunks
+
 def send_job_posts(posts: list[dict], bot: TeleBot, msg: Message = None, channel_id: str = None) -> None:
     """Loops over the provided job post list and send each post in a separate message.
     
@@ -39,8 +108,7 @@ def send_job_posts(posts: list[dict], bot: TeleBot, msg: Message = None, channel
         job_details = post["job_details"]
 
         # Split job details into chunks of maximum length
-        max_chunk_length = 4096  # Maximum length of a Telegram message
-        job_detail_chunks = split_text(job_details, max_chunk_length)
+        job_detail_chunks = split_markdown(job_details)
 
         # Acquire the lock to ensure synchronous processing of the job listing
         with message_lock:
@@ -74,5 +142,7 @@ def send_job_posts(posts: list[dict], bot: TeleBot, msg: Message = None, channel
                         retry_after = int(e.result_json['parameters']['retry_after'])
                         print(f"Rate limited, sleeping for {retry_after} seconds")
                         time.sleep(retry_after)
+                    elif e.error_code == 400:
+                        print("Formatting error, skipping message")
                     else:
                         raise e

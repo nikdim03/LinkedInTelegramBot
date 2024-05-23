@@ -97,8 +97,8 @@ def ljobs(msg: Message, bot: TeleBot) -> None:
                 message_id=wait_message.message_id,
                 text=error_message
             )
-        except Exception:
-            error_message = f"Something went wrong while posting the vacancies🙊: {e}"
+        except Exception as edit_error:
+            error_message = f"Something went wrong while posting the vacancies🙊: {e}, {edit_error}"
             bot.send_message(
                 chat_id=msg.chat.id,
                 text=error_message,

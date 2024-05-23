@@ -256,7 +256,7 @@ def main() -> None:
     # Running the bot.
     while True:
         try:
-            bot.polling(none_stop=True, timeout=90, allowed_updates=util.update_types)
+            bot.polling(none_stop=True, timeout=180, allowed_updates=util.update_types)
         except Exception as e:
             print(datetime.now(), e)
             time.sleep(5)
