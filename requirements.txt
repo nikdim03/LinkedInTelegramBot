@@ -9,4 +9,4 @@ schedule==1.1.0
 soupsieve==2.3.2.post1
 urllib3==1.26.13
 markdownify==0.12.1
-google-generativeai=0.5.4
+google-generativeai==0.5.4
