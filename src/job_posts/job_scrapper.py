@@ -96,9 +96,6 @@ class LinkedinScrapper(Scrapper):
 
     _fetch_jobs_interval: str = FETCH_JOBS_INTERVAL
 
-    # The url to send request to and get data back.
-    url: str = "https://www.linkedin.com/jobs/search?keywords={JOB_TITLE}&location={LOCATION}&f_TPR=r{FETCH_JOBS_INTERVAL}"
-
     # Default list to hold raw html data.
     raw_data: list[dict] = field(default_factory=list)
 
@@ -111,6 +108,7 @@ class LinkedinScrapper(Scrapper):
     # Current index of the API key
     _current_api_key_index = 0
 
+    # Initialize genai with the 1st API key
     genai.configure(api_key=GEMINI_API_KEYS[_current_api_key_index])
 
     def set_search_params(self, job_tile: str, location: str) -> None:
@@ -130,21 +128,26 @@ class LinkedinScrapper(Scrapper):
 
     def scrape_jobs(self) -> None:
         """This method start the scrapping process."""
+        # Splitting the location string by comma
+        locations = self._location.split(',')
 
-        # Formatting the url with the job title and location.
-        self.url = self.url.format(JOB_TITLE=self._job_tile, LOCATION=self._location, FETCH_JOBS_INTERVAL = self._fetch_jobs_interval)
+        # Loop through each location and scrape jobs
+        for location in locations:
+            # Creating the URL with the job title and current location.
+            url = f"https://www.linkedin.com/jobs/search?keywords={self._job_tile}&location={location.strip()}&f_TPR=r{self._fetch_jobs_interval}"
+            # Collecting the data.
+            self.collect_data(url)
 
-        # Collecting the data.
-        self.collect_data()
-        # Parsing the data.
-        self.parse_data()
+            # Parsing the data.
+            self.parse_data()
+
         # Formatting the data.
         self.format_data()
 
-    def collect_data(self):
+    def collect_data(self, url: str):
         """This Method sends calls the url using the request lib and gets back the data from linkedin"""
         # Getting the response from the website.
-        response = requests.get(self.url, headers={ "User-Agent": "Mozilla/5.0" })
+        response = requests.get(url, headers={ "User-Agent": "Mozilla/5.0" })
 
         # Parsing the response.
         soup = BeautifulSoup(response.content, "html.parser")
@@ -274,7 +277,7 @@ class LinkedinScrapper(Scrapper):
         2. A tag about relocation if specified (#relocation).
         3. A tag indicating #localsOnly if specified.
         4. A tag for the work arrangement (#remote / #hybrid / #office) if specified.
-        5. A tag with the minimum years of experience required if specified, in the format: #5yexp.
+        5. A tag with the minimum years of experience required if specified, in the format: #5yexp (if there's a range, use the starting number).
 
         Only include these exact tags if applicable, comma-separated.
         """
