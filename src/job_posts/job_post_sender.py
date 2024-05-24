@@ -4,6 +4,7 @@ from telebot import TeleBot
 from telebot.types import Message
 from telebot import apihelper
 import time
+from datetime import datetime
 from threading import Lock
 
 # Importing the inline keyboard markup and button to create inline button for the job links
@@ -140,9 +141,9 @@ def send_job_posts(posts: list[dict], bot: TeleBot, msg: Message = None, channel
                     if e.error_code == 429:
                         # Extract retry-after time from the exception and wait
                         retry_after = int(e.result_json['parameters']['retry_after'])
-                        print(f"Rate limited, sleeping for {retry_after} seconds")
+                        print(datetime.now(), f"Rate limited, sleeping for {retry_after} seconds")
                         time.sleep(retry_after)
                     elif e.error_code == 400:
-                        print("Formatting error, skipping message")
+                        print(datetime.now(), "Formatting error, skipping message")
                     else:
                         raise e

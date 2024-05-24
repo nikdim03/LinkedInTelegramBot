@@ -3,6 +3,7 @@
 # Importing time and threading to run the scheduled tasks on a different thread.
 import threading
 import time
+from datetime import datetime
 
 # Importing Callable to type hinting.
 from typing import Callable
@@ -75,4 +76,4 @@ class Scheduler:
             t1.start()
             Scheduler._runner_started = True
         else:
-            print("Runner is already running.")
+            print(datetime.now(), "Runner is already running.")

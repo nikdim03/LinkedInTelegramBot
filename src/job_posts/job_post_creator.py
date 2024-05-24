@@ -25,6 +25,7 @@ class TgJobPost(TgPost):
 
     # This is the template that will be used to create the post.
     post_template: str = (
+        "• *AI Tags:* {}\n"
         "• *Job Title:* {}\n"
         "• *Company:* {}\n"
         "• *Location:* {}\n"
@@ -56,6 +57,7 @@ class TgJobPost(TgPost):
             post = {
                 # This key hold the job details formatted for posting using the post_template.
                 "job_details": self.post_template.format(
+                    job["ai_tags"],
                     job["job_title"],
                     job["job_company"],
                     job["job_location"],

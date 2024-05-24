@@ -27,6 +27,15 @@ from datetime import datetime, timedelta
 # Importing re to parse timestamp
 import re
 
+# Importing sleep to delay requests to Gemini API
+from time import sleep
+
+# Importing google.generativeai to generate AI tags
+import google.generativeai as genai
+from google.api_core.exceptions import TooManyRequests
+from google.api_core.exceptions import ResourceExhausted
+
+
 # Getting default job title.
 DEFAULT_JOB_TITLE = config("DEFAULT_JOB_TITLE")
 
@@ -38,6 +47,10 @@ if config("FETCH_JOBS_INTERVAL") != '':
     FETCH_JOBS_INTERVAL = config("FETCH_JOBS_INTERVAL")
 else:
     FETCH_JOBS_INTERVAL = '86580'
+
+AI_TAG_ALLOW_LIST = config('AI_TAG_ALLOW_LIST').split(',')
+
+GEMINI_API_KEYS = config('GEMINI_API_KEYS').split(',')
 
 # Creating a custom MarkdownConverter that uses one asterisk for strong/bold text.
 class SingleAsteriskBoldConverter(MarkdownConverter):
@@ -95,6 +108,11 @@ class LinkedinScrapper(Scrapper):
     # Default list to hold final formatted data ready for use.
     formatted_data: list[dict] = field(default_factory=list)
 
+    # Current index of the API key
+    _current_api_key_index = 0
+
+    genai.configure(api_key=GEMINI_API_KEYS[_current_api_key_index])
+
     def set_search_params(self, job_tile: str, location: str) -> None:
         """_summary_ :  This method sets the search parameters for the linkedin jobs.
 
@@ -126,7 +144,7 @@ class LinkedinScrapper(Scrapper):
     def collect_data(self):
         """This Method sends calls the url using the request lib and gets back the data from linkedin"""
         # Getting the response from the website.
-        response = requests.get(self.url)
+        response = requests.get(self.url, headers={ "User-Agent": "Mozilla/5.0" })
 
         # Parsing the response.
         soup = BeautifulSoup(response.content, "html.parser")
@@ -165,7 +183,7 @@ class LinkedinScrapper(Scrapper):
             apply_link = self.remove_country_code_from_url(job.find("a", class_="base-card__full-link")["href"])
 
             # Get the page source
-            page_source = requests.get(apply_link).content
+            page_source = requests.get(apply_link, headers={ "User-Agent": "Mozilla/5.0" }).content
 
             # Parse the page source with BeautifulSoup
             soup = BeautifulSoup(page_source, 'html.parser')
@@ -211,8 +229,10 @@ class LinkedinScrapper(Scrapper):
 
             # Check if specified job title is found in either the job title or job description
             if self._job_tile.lower() in job_title.lower() or self._job_tile in job_description_md.lower():
+                # Getting the AI tags for the job
+                ai_tags = self.get_ai_tags(job_title, job_company, job_location, job_description_md)
                 # Appending the job details to class variable list as a tuple
-                self.parsed_data.append((job_title, job_company, job_location, self.replace_md_spaces(job_description_md), apply_link, timestamp.astimezone(), ago_text))
+                self.parsed_data.append((job_title, job_company, job_location, self.replace_md_spaces(job_description_md), apply_link, timestamp.astimezone(), ago_text, ai_tags))
 
     def format_data(self):
         """This Method formats data after being parsed into a desired format"""
@@ -231,10 +251,67 @@ class LinkedinScrapper(Scrapper):
                 "job_location": job[2],
                 "about_job": self.limit_newlines(job[3]).strip(),
                 "apply_link": job[4],
-                "timestamp": job[6]
+                "timestamp": job[6],
+                "ai_tags": job[7]
             }
             # Adding this dict to the formatted_data instance variable.
             self.formatted_data.append(job_details)
+
+    def get_ai_tags(self, job_title, job_company, job_location, job_description_md):
+        model = genai.GenerativeModel('gemini-1.5-flash-latest')
+        prompt = f"""
+        I would like you to generate relevant tags for the following job vacancy:
+        {job_title}
+
+        {job_company}
+
+        {job_location}
+
+        {job_description_md}
+
+        The tags should include (if specified):
+        1. A tag indicating the experience level (#junior / #middle / #senior).
+        2. A tag about relocation if specified (#relocation).
+        3. A tag indicating #localsOnly if specified.
+        4. A tag for the work arrangement (#remote / #hybrid / #office) if specified.
+        5. A tag with the minimum years of experience required if specified, in the format: #5yexp.
+
+        Only include these exact tags if applicable, comma-separated.
+        """
+        try:
+            response = model.generate_content(prompt)
+            if len(response.parts) == 0:
+                return ""
+            else:
+                return self.split_response_to_tags(response.parts[0].text)
+        except ResourceExhausted as e:
+            print(datetime.now(), 'Gemini Resource Exhausted, switching tokens')
+            self.switchGeminiToken()
+        except TooManyRequests as e:
+            retry_after = 60
+            print(datetime.now(), f'Too many requests to Gemini API, sleeping for {retry_after} seconds')
+            sleep(retry_after)
+        except Exception as e:
+            print(datetime.now(), f"An unexpected error occurred while getting AI Tags: {e}")
+            return ""
+
+    def split_response_to_tags(self, response_text: str):
+        hashtags = []
+        pattern = re.compile(r'^\d+yexp$')
+
+        for word in response_text.split():
+            cleaned_word = re.sub(r'[^\w#]', '', word)  # Remove non-word characters except #
+            if cleaned_word.startswith('#'):
+                cleaned_word = cleaned_word[1:]  # Remove leading #
+
+            if cleaned_word in AI_TAG_ALLOW_LIST or pattern.match(cleaned_word):
+                hashtags.append(f"#{cleaned_word}")
+
+        return " ".join(hashtags) if hashtags else ""
+
+    def switchGeminiToken(self):
+        self._current_api_key_index = (self._current_api_key_index + 1) % len(GEMINI_API_KEYS)
+        genai.configure(api_key=GEMINI_API_KEYS[self._current_api_key_index])
 
     def remove_country_code_from_url(self, url):
         # Regex pattern to match URLs with country code before linkedin.com
